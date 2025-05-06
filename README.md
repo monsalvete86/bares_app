@@ -733,8 +733,55 @@ Las variables configuradas incluyen:
 - Configuración de JWT para autenticación
   - `JWT_SECRET`: Clave secreta para firmar tokens JWT
   - `JWT_EXPIRATION`: Tiempo de expiración de los tokens
+- Configuración de CORS
+  - `CORS_ENABLED`: Habilita o deshabilita CORS
+  - `CORS_ALLOW_ALL_ORIGINS`: Permite peticiones desde cualquier origen (útil en desarrollo)
 
 **Nota:** Los archivos `.env` no se envían al repositorio por seguridad.
+
+## Configuración de CORS
+
+El proyecto está configurado para manejar Cross-Origin Resource Sharing (CORS), lo que permite que el frontend pueda comunicarse con el backend aunque estén en diferentes dominios o puertos.
+
+### Variables de Entorno para CORS
+
+- `CORS_ENABLED`: Si se establece como `true`, se habilita la funcionalidad CORS. Por defecto está habilitada.
+- `CORS_ALLOW_ALL_ORIGINS`: Si se establece como `true`, se permite el acceso desde cualquier origen. Esto es útil durante el desarrollo, pero debe configurarse adecuadamente en producción.
+
+### Configuración Ampliada para Desarrollo Local
+
+El proyecto está configurado para permitir conexiones desde diversos orígenes locales comunes en desarrollo:
+
+- Puertos comunes: 3000, 3001, 4200, 5000, 5173 (Vite), 5500 (Live Server), 8000, 8080, 9000
+- Direcciones: tanto `localhost` como `127.0.0.1`
+- Protocolos: tanto `http` como `https`
+
+Esto facilita el desarrollo con diferentes frameworks y herramientas frontend sin problemas de CORS.
+
+### Manejo de Certificados SSL
+
+Para desarrollo local, el proyecto está configurado para no rechazar conexiones que no tengan certificados SSL válidos, lo que permite trabajar con `https` en entornos de desarrollo sin necesidad de configurar certificados.
+
+### WebSockets y CORS
+
+Los WebSockets también tienen configurado CORS de manera amplia para permitir conexiones desde el frontend. La configuración incluye:
+
+- Orígenes: se permiten todos los orígenes en desarrollo
+- Cabeceras: se permiten cabeceras comunes como `Content-Type`, `Authorization`, `Accept`, etc.
+- Credenciales: se permiten credenciales en las solicitudes
+- Cache: las respuestas de preflight se cachean durante 1 hora para mejorar el rendimiento
+
+### Configuración para Producción
+
+En entornos de producción, es recomendable:
+
+1. Establecer `CORS_ALLOW_ALL_ORIGINS=false`
+2. Configurar los orígenes específicos que necesiten acceso en el archivo `src/config/cors.config.ts`
+3. Configuración recomendada para entornos de producción:
+   ```
+   CORS_ENABLED=true
+   CORS_ALLOW_ALL_ORIGINS=false
+   ```
 
 ## Project setup
 
@@ -780,4 +827,3 @@ $ mau deploy
 ```
 
 With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
-

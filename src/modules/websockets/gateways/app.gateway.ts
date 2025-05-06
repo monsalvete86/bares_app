@@ -20,7 +20,13 @@ import { SongRequestUpdateDto, TableStatusUpdateDto, OrderRequestUpdateDto, NewO
  */
 @WebSocketGateway({
   cors: {
-    origin: '*', // En producción, limitar a orígenes específicos
+    origin: true, // Permitimos cualquier origen en desarrollo
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS', 'HEAD'],
+    credentials: true,
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin'],
+    exposedHeaders: ['Content-Disposition', 'Content-Length', 'X-Total-Count'],
+    preflightContinue: false,
+    maxAge: 3600, // Cache de preflight por 1 hora
   },
 })
 export class AppGateway implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect {

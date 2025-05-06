@@ -25,6 +25,8 @@ import { CorsConfigService } from './cors.config';
         DB_NAME: Joi.string().required(),
         JWT_SECRET: Joi.string().required(),
         JWT_EXPIRATION: Joi.string().default('7d'),
+        CORS_ENABLED: Joi.boolean().default(true),
+        CORS_ALLOW_ALL_ORIGINS: Joi.boolean().default(false),
       }),
     }),
   ],

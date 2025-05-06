@@ -1,5 +1,5 @@
 import { BaseEntity } from '../../../common/entities/base.entity';
-import { Column, Entity } from 'typeorm';
+import { Column, Entity, Index } from 'typeorm';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 @Entity('general_config')
@@ -78,4 +78,13 @@ export class GeneralConfig extends BaseEntity {
   })
   @Column({ name: 'pie_facturas', type: 'text', nullable: true })
   pieFacturas: string;
+  
+  @ApiProperty({
+    description: 'Campo utilizado para garantizar que solo exista un registro de configuración',
+    example: true,
+    default: true
+  })
+  @Column({ name: 'is_singleton', default: true })
+  @Index('idx_general_config_singleton', { unique: true, where: 'is_singleton = true' })
+  isSingleton: boolean;
 } 

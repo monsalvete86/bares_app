@@ -6,11 +6,39 @@ import { CorsConfigService } from './config/cors.config';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, {
+    // Desactivamos la verificación de certificados SSL para desarrollo local
+    httpsOptions: process.env.NODE_ENV === 'production' ? undefined : {
+      rejectUnauthorized: false,
+    },
+  });
   
   // Configuración de CORS utilizando el servicio
   const corsConfigService = app.get(CorsConfigService);
   app.enableCors(corsConfigService.getCorsOptions());
+  
+  // Manejador global de errores
+  app.use((err, req, res, next) => {
+    if (err.name === 'CORSError' || err.message.includes('CORS')) {
+      console.error('Error de CORS:', err.message);
+      return res.status(200).json({
+        success: false,
+        message: 'Error de CORS: Solicitud bloqueada',
+        error: err.message,
+      });
+    }
+
+    if (err.name === 'CertificateError' || err.message.includes('certificate')) {
+      console.error('Error de certificado SSL:', err.message);
+      return res.status(200).json({
+        success: false,
+        message: 'Error de certificado SSL',
+        error: err.message,
+      });
+    }
+
+    next(err);
+  });
   
   app.useGlobalPipes(new ValidationPipe({
     whitelist: true,
