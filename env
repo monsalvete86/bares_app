@@ -3,7 +3,7 @@ NODE_ENV=development
 
 # SERVIDOR
 PORT=3000
-HOST=0.0.0.0
+HOST=localhost
 
 # DATABASE
 DB_HOST=localhost
@@ -13,7 +13,7 @@ DB_PASSWORD=postgres
 DB_NAME=bares_db
 
 # JWT
-JWT_SECRET=secret_key_development
+JWT_SECRET=secret_key_dev
 JWT_EXPIRATION=7d
 
 # CORS

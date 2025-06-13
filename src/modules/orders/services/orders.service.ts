@@ -1,12 +1,14 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Between, LessThanOrEqual, MoreThanOrEqual } from 'typeorm';
+import { Repository } from 'typeorm';
 import { Order } from '../entities/order.entity';
 import { OrderItem } from '../entities/order-item.entity';
-import { CreateOrderDto } from '../dto/create-order.dto';
+import { CreateOrderDto, OrderStatus } from '../dto/create-order.dto';
 import { UpdateOrderDto } from '../dto/update-order.dto';
 import { FilterOrderDto } from '../dto/filter-order.dto';
 import { PaginationDto } from '../dto/pagination.dto';
+import { GroupedOrderItemDto } from '../dto/grouped-order-item.dto';
+import { OrderDetailDto } from '../dto/order-detail.dto';
 
 @Injectable()
 export class OrdersService {
@@ -17,7 +19,7 @@ export class OrdersService {
     private readonly orderItemRepository: Repository<OrderItem>,
   ) {}
 
-  async create(createOrderDto: CreateOrderDto): Promise<Order> {
+  async create(createOrderDto: CreateOrderDto): Promise<OrderDetailDto> {
     try {
       // Crear la orden
       const order = this.orderRepository.create({
@@ -45,11 +47,10 @@ export class OrdersService {
         });
 
         // Guardar los items
-        const savedItems = await this.orderItemRepository.save(orderItems);
-        savedOrder.items = savedItems;
+        await this.orderItemRepository.save(orderItems);
 
         // Calcular el total de la orden
-        const total = savedItems.reduce((sum, item) => sum + Number(item.subtotal), 0);
+        const total = orderItems.reduce((sum, item) => sum + Number(item.subtotal), 0);
         savedOrder.total = total;
 
         // Actualizar la orden con el total
@@ -63,16 +64,18 @@ export class OrdersService {
     }
   }
 
-  async findAll(): Promise<Order[]> {
-    return this.orderRepository.find({
+  async findAll(): Promise<OrderDetailDto[]> {
+    const orders = await this.orderRepository.find({
       relations: ['items', 'items.product', 'table', 'client'],
     });
+
+    return Promise.all(orders.map(order => this.mapOrderToDetailDto(order)));
   }
 
   async findPaginated(
     paginationDto: PaginationDto,
     filterDto: FilterOrderDto,
-  ): Promise<{ data: Order[]; total: number; page: number; limit: number }> {
+  ): Promise<{ data: OrderDetailDto[]; total: number; page: number; limit: number }> {
     const { page = 1, limit = 10 } = paginationDto;
     const skip = (page - 1) * limit;
 
@@ -122,15 +125,17 @@ export class OrdersService {
       .take(limit)
       .getManyAndCount();
 
+    const detailedOrders = await Promise.all(data.map(order => this.mapOrderToDetailDto(order)));
+
     return {
-      data,
+      data: detailedOrders,
       total,
       page,
       limit,
     };
   }
 
-  async findOne(id: string): Promise<Order> {
+  async findOne(id: string): Promise<OrderDetailDto> {
     const order = await this.orderRepository.findOne({
       where: { id },
       relations: ['items', 'items.product', 'table', 'client'],
@@ -140,11 +145,18 @@ export class OrdersService {
       throw new NotFoundException(`Orden con ID ${id} no encontrada`);
     }
 
-    return order;
+    return this.mapOrderToDetailDto(order);
   }
 
-  async update(id: string, updateOrderDto: UpdateOrderDto): Promise<Order> {
-    const order = await this.findOne(id);
+  async update(id: string, updateOrderDto: UpdateOrderDto): Promise<OrderDetailDto> {
+    const order = await this.orderRepository.findOne({
+      where: { id },
+      relations: ['items', 'items.product', 'table', 'client'],
+    });
+
+    if (!order) {
+      throw new NotFoundException(`Orden con ID ${id} no encontrada`);
+    }
 
     try {
       // Actualizar campos básicos de la orden
@@ -171,10 +183,10 @@ export class OrdersService {
         });
 
         // Guardar los nuevos items
-        const savedItems = await this.orderItemRepository.save(orderItems);
+        await this.orderItemRepository.save(orderItems);
         
         // Calcular el nuevo total
-        const total = savedItems.reduce((sum, item) => sum + Number(item.subtotal), 0);
+        const total = orderItems.reduce((sum, item) => sum + Number(item.subtotal), 0);
         order.total = total;
       }
 
@@ -189,12 +201,73 @@ export class OrdersService {
   }
 
   async remove(id: string): Promise<void> {
-    const order = await this.findOne(id);
+    const order = await this.orderRepository.findOne({
+      where: { id },
+      relations: ['items'],
+    });
+
+    if (!order) {
+      throw new NotFoundException(`Orden con ID ${id} no encontrada`);
+    }
 
     // Eliminar los items de la orden
     await this.orderItemRepository.delete({ orderId: id });
     
     // Eliminar la orden
     await this.orderRepository.remove(order);
+  }
+
+  /**
+   * Agrupa los items de una orden por producto y devuelve un array de items agrupados
+   */
+  private groupOrderItemsByProduct(orderItems: OrderItem[]): GroupedOrderItemDto[] {
+    const groupedMap = new Map<string, GroupedOrderItemDto>();
+
+    orderItems.forEach(item => {
+      const productId = item.productId;
+      
+      if (!groupedMap.has(productId)) {
+        groupedMap.set(productId, {
+          productId,
+          product: item.product,
+          totalQuantity: 0,
+          unitPrice: Number(item.unitPrice),
+          subtotal: 0,
+          itemIds: [],
+        });
+      }
+      
+      const group = groupedMap.get(productId);
+      if (group) {
+        group.totalQuantity += item.quantity;
+        group.subtotal += Number(item.subtotal);
+        group.itemIds.push(item.id);
+      }
+    });
+
+    return Array.from(groupedMap.values());
+  }
+
+  /**
+   * Mapea una entidad Order al DTO OrderDetailDto con items agrupados
+   */
+  private mapOrderToDetailDto(order: Order): OrderDetailDto {
+    const groupedItems = this.groupOrderItemsByProduct(order.items);
+
+    const orderDetailDto: OrderDetailDto = {
+      id: order.id,
+      tableId: order.tableId,
+      table: order.table,
+      clientId: order.clientId,
+      client: order.client,
+      groupedItems,
+      total: Number(order.total),
+      status: order.status as OrderStatus,
+      createdAt: order.createdAt,
+      updatedAt: order.updatedAt,
+      isActive: order.isActive
+    };
+
+    return orderDetailDto;
   }
 } 

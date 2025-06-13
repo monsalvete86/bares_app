@@ -6,6 +6,7 @@ import { FilterTableDto } from '../dto/filter-table.dto';
 import { PaginationDto } from '../dto/pagination.dto';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { Table } from '../entities/table.entity';
+import { TableDetailDto } from '../dto/table-detail.dto';
 import { 
   ApiBearerAuth, 
   ApiCreatedResponse, 
@@ -13,7 +14,8 @@ import {
   ApiOperation, 
   ApiParam, 
   ApiQuery, 
-  ApiTags 
+  ApiTags,
+  ApiNotFoundResponse 
 } from '@nestjs/swagger';
 
 @ApiTags('Mesas')
@@ -108,10 +110,10 @@ export class TablesController {
     return this.tablesService.findPaginated(paginationDto, filterDto);
   }
 
-  @ApiOperation({ summary: 'Obtener una mesa por ID' })
-  @ApiParam({ name: 'id', description: 'ID de la mesa' })
+  @ApiOperation({ summary: 'Obtener un recurso por ID' })
+  @ApiParam({ name: 'id', description: 'ID del recurso' })
   @ApiOkResponse({ 
-    description: 'Mesa encontrada',
+    description: 'Recurso encontrado',
     type: Table 
   })
   @Get(':id')
@@ -119,10 +121,22 @@ export class TablesController {
     return this.tablesService.findOne(id);
   }
 
-  @ApiOperation({ summary: 'Actualizar una mesa' })
-  @ApiParam({ name: 'id', description: 'ID de la mesa a actualizar' })
+  @ApiOperation({ summary: 'Obtener detalles completos de una mesa por ID' })
+  @ApiParam({ name: 'id', description: 'ID de la mesa' })
   @ApiOkResponse({ 
-    description: 'Mesa actualizada exitosamente',
+    description: 'Detalles completos de la mesa con órdenes activas, clientes y productos',
+    type: TableDetailDto 
+  })
+  @ApiNotFoundResponse({ description: 'Mesa no encontrada' })
+  @Get(':id/details')
+  async findDetailedTable(@Param('id') id: string): Promise<TableDetailDto> {
+    return this.tablesService.findDetailedTableById(id);
+  }
+
+  @ApiOperation({ summary: 'Actualizar un recurso' })
+  @ApiParam({ name: 'id', description: 'ID del recurso a actualizar' })
+  @ApiOkResponse({ 
+    description: 'Recurso actualizado exitosamente',
     type: Table 
   })
   @Patch(':id')

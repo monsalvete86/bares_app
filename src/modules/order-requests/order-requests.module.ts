@@ -7,11 +7,13 @@ import { OrderRequestItemsService } from './services/order-request-items.service
 import { OrderRequestsController } from './controllers/order-requests.controller';
 import { OrderRequestItemsController } from './controllers/order-request-items.controller';
 import { WebsocketsModule } from '../websockets/websockets.module';
+import { OrdersModule } from '../orders/orders.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([OrderRequest, OrderRequestItem]),
     WebsocketsModule,
+    OrdersModule,
   ],
   controllers: [OrderRequestsController, OrderRequestItemsController],
   providers: [OrderRequestsService, OrderRequestItemsService],

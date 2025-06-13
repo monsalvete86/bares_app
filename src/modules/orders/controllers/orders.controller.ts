@@ -5,7 +5,7 @@ import { UpdateOrderDto } from '../dto/update-order.dto';
 import { FilterOrderDto } from '../dto/filter-order.dto';
 import { PaginationDto } from '../dto/pagination.dto';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
-import { Order } from '../entities/order.entity';
+import { OrderDetailDto } from '../dto/order-detail.dto';
 import { 
   ApiBearerAuth, 
   ApiCreatedResponse, 
@@ -26,20 +26,20 @@ export class OrdersController {
   @ApiOperation({ summary: 'Crear una nueva orden' })
   @ApiCreatedResponse({ 
     description: 'Orden creada exitosamente',
-    type: Order 
+    type: OrderDetailDto 
   })
   @Post()
-  async create(@Body() createOrderDto: CreateOrderDto): Promise<Order> {
+  async create(@Body() createOrderDto: CreateOrderDto): Promise<OrderDetailDto> {
     return this.ordersService.create(createOrderDto);
   }
 
   @ApiOperation({ summary: 'Obtener todas las órdenes' })
   @ApiOkResponse({ 
-    description: 'Lista de todas las órdenes',
-    type: [Order] 
+    description: 'Lista de todas las órdenes con información completa del cliente y productos agrupados',
+    type: [OrderDetailDto]
   })
   @Get()
-  async findAll(): Promise<Order[]> {
+  async findAll(): Promise<OrderDetailDto[]> {
     return this.ordersService.findAll();
   }
 
@@ -80,12 +80,12 @@ export class OrdersController {
     }
   })
   @ApiOkResponse({ 
-    description: 'Lista paginada de órdenes',
+    description: 'Lista paginada de órdenes con información completa del cliente y productos agrupados',
     schema: {
       properties: {
         data: {
           type: 'array',
-          items: { $ref: '#/components/schemas/Order' }
+          items: { $ref: '#/components/schemas/OrderDetailDto' }
         },
         total: { type: 'number' },
         page: { type: 'number' },
@@ -103,7 +103,7 @@ export class OrdersController {
     @Query('createdFrom') createdFrom?: string,
     @Query('createdTo') createdTo?: string,
     @Query('isActive') isActive?: string,
-  ): Promise<{ data: Order[]; total: number; page: number; limit: number }> {
+  ): Promise<{ data: OrderDetailDto[]; total: number; page: number; limit: number }> {
     // Convertir parámetros según sea necesario
     const paginationDto: PaginationDto = { 
       page: page ? Number(page) : 1, 
@@ -125,11 +125,11 @@ export class OrdersController {
   @ApiOperation({ summary: 'Obtener una orden por ID' })
   @ApiParam({ name: 'id', description: 'ID de la orden' })
   @ApiOkResponse({ 
-    description: 'Orden encontrada',
-    type: Order 
+    description: 'Orden encontrada con información completa del cliente y productos agrupados',
+    type: OrderDetailDto 
   })
   @Get(':id')
-  async findOne(@Param('id') id: string): Promise<Order> {
+  async findOne(@Param('id') id: string): Promise<OrderDetailDto> {
     return this.ordersService.findOne(id);
   }
 
@@ -137,10 +137,10 @@ export class OrdersController {
   @ApiParam({ name: 'id', description: 'ID de la orden a actualizar' })
   @ApiOkResponse({ 
     description: 'Orden actualizada exitosamente',
-    type: Order 
+    type: OrderDetailDto 
   })
   @Patch(':id')
-  async update(@Param('id') id: string, @Body() updateOrderDto: UpdateOrderDto): Promise<Order> {
+  async update(@Param('id') id: string, @Body() updateOrderDto: UpdateOrderDto): Promise<OrderDetailDto> {
     return this.ordersService.update(id, updateOrderDto);
   }
 

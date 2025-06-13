@@ -19,15 +19,18 @@ import { SongRequestUpdateDto, TableStatusUpdateDto, OrderRequestUpdateDto, NewO
  * - Emitir notificaciones de nuevos pedidos
  */
 @WebSocketGateway({
+  // Configuración CORS más permisiva posible
   cors: {
-    origin: true, // Permitimos cualquier origen en desarrollo
-    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS', 'HEAD'],
+    origin: "*",
+    methods: ["GET", "HEAD", "PUT", "PATCH", "POST", "DELETE", "OPTIONS"],
     credentials: true,
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin'],
-    exposedHeaders: ['Content-Disposition', 'Content-Length', 'X-Total-Count'],
+    allowedHeaders: "*",
     preflightContinue: false,
-    maxAge: 3600, // Cache de preflight por 1 hora
+    optionsSuccessStatus: 204
   },
+  // Aseguramos que Socket.IO no genere su propia gestión CORS
+  allowEIO3: true,
+  transports: ['websocket', 'polling'],
 })
 export class AppGateway implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect {
   private readonly logger = new Logger(AppGateway.name);
@@ -39,6 +42,16 @@ export class AppGateway implements OnGatewayInit, OnGatewayConnection, OnGateway
    */
   afterInit(): void {
     this.logger.log('WebSocket Gateway inicializado');
+    
+    // Configurar CORS dinámicamente después de la inicialización
+    if (this.server) {
+      this.server.engine.on("headers", (headers, req) => {
+        headers["Access-Control-Allow-Origin"] = req.headers.origin || "*";
+        headers["Access-Control-Allow-Methods"] = "GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS";
+        headers["Access-Control-Allow-Headers"] = "*";
+        headers["Access-Control-Allow-Credentials"] = "true";
+      });
+    }
   }
 
   /**

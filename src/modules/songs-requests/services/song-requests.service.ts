@@ -6,14 +6,14 @@ import { CreateSongRequestDto } from '../dto/create-song-request.dto';
 import { UpdateSongRequestDto } from '../dto/update-song-request.dto';
 import { FilterSongRequestDto } from '../dto/filter-song-request.dto';
 import { PaginationDto } from '../dto/pagination.dto';
-import { AppGateway } from '../../websockets/gateways/app.gateway';
+import { WebsocketsService } from '../../websockets/services/websockets.service';
 
 @Injectable()
 export class SongRequestsService {
   constructor(
     @InjectRepository(SongRequest)
     private readonly songRequestRepository: Repository<SongRequest>,
-    private readonly appGateway: AppGateway
+    private readonly websocketsService: WebsocketsService
   ) {}
 
   async create(createSongRequestDto: CreateSongRequestDto): Promise<SongRequest> {
@@ -54,7 +54,7 @@ export class SongRequestsService {
       
       // Emitir evento WebSocket con la lista actualizada de canciones de esta mesa
       const updatedSongRequests = await this.findActiveByTable(createSongRequestDto.tableId);
-      this.appGateway.emitSongRequestUpdate(createSongRequestDto.tableId, updatedSongRequests);
+      this.websocketsService.notifySongRequestUpdate(createSongRequestDto.tableId, updatedSongRequests);
       
       return savedSongRequest;
     } catch (error) {
@@ -147,7 +147,7 @@ export class SongRequestsService {
       // Si se actualiza una canción, emitir evento WebSocket
       if (updated.tableId) {
         const updatedSongRequests = await this.findActiveByTable(updated.tableId);
-        this.appGateway.emitSongRequestUpdate(updated.tableId, updatedSongRequests);
+        this.websocketsService.notifySongRequestUpdate(updated.tableId, updatedSongRequests);
       }
       
       return updated;
@@ -167,7 +167,7 @@ export class SongRequestsService {
     
     // Emitir evento WebSocket después de eliminar
     const updatedSongRequests = await this.findActiveByTable(tableId);
-    this.appGateway.emitSongRequestUpdate(tableId, updatedSongRequests);
+    this.websocketsService.notifySongRequestUpdate(tableId, updatedSongRequests);
   }
   
   async markAsPlayed(id: string): Promise<SongRequest> {
@@ -177,7 +177,7 @@ export class SongRequestsService {
     
     // Emitir evento WebSocket
     const updatedSongRequests = await this.findActiveByTable(updated.tableId);
-    this.appGateway.emitSongRequestUpdate(updated.tableId, updatedSongRequests);
+    this.websocketsService.notifySongRequestUpdate(updated.tableId, updatedSongRequests);
     
     return updated;
   }
@@ -190,7 +190,7 @@ export class SongRequestsService {
     
     // Emitir evento WebSocket con lista vacía (ya que todas están desactivadas)
     const updatedSongRequests = await this.findActiveByTable(tableId);
-    this.appGateway.emitSongRequestUpdate(tableId, updatedSongRequests);
+    this.websocketsService.notifySongRequestUpdate(tableId, updatedSongRequests);
   }
 
   async findActiveByTable(tableId: string): Promise<SongRequest[]> {

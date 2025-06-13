@@ -8,6 +8,9 @@ import { UpdateOrderRequestDto } from '../dto/update-order-request.dto';
 import { FilterOrderRequestDto } from '../dto/filter-order-request.dto';
 import { PaginationDto } from '../dto/pagination.dto';
 import { WebsocketsService } from '../../websockets/services/websockets.service';
+import { OrdersService } from '../../orders/services/orders.service';
+import { CreateOrderDto, OrderStatus } from '../../orders/dto/create-order.dto';
+import { CreateOrderItemDto } from '../../orders/dto/create-order-item.dto';
 
 @Injectable()
 export class OrderRequestsService {
@@ -17,6 +20,7 @@ export class OrderRequestsService {
     @InjectRepository(OrderRequestItem)
     private readonly orderRequestItemRepository: Repository<OrderRequestItem>,
     private readonly websocketsService: WebsocketsService,
+    private readonly ordersService: OrdersService,
   ) {}
 
   async create(createOrderRequestDto: CreateOrderRequestDto): Promise<OrderRequest> {
@@ -104,37 +108,30 @@ export class OrderRequestsService {
       .leftJoinAndSelect('orderRequest.table', 'table')
       .leftJoinAndSelect('orderRequest.client', 'client');
 
-    // Aplicar filtros si existen
-    if (filterDto) {
-      if (filterDto.tableId) {
-        queryBuilder.andWhere('orderRequest.tableId = :tableId', { tableId: filterDto.tableId });
-      }
-      if (filterDto.clientId) {
-        queryBuilder.andWhere('orderRequest.clientId = :clientId', { clientId: filterDto.clientId });
-      }
-      if (filterDto.isCompleted !== undefined) {
-        queryBuilder.andWhere('orderRequest.isCompleted = :isCompleted', { isCompleted: filterDto.isCompleted });
-      }
-      
-      // Filtros de fecha
-      if (filterDto.createdFrom && filterDto.createdTo) {
-        queryBuilder.andWhere('orderRequest.createdAt BETWEEN :createdFrom AND :createdTo', {
-          createdFrom: new Date(filterDto.createdFrom),
-          createdTo: new Date(filterDto.createdTo),
-        });
-      } else if (filterDto.createdFrom) {
-        queryBuilder.andWhere('orderRequest.createdAt >= :createdFrom', {
-          createdFrom: new Date(filterDto.createdFrom),
-        });
-      } else if (filterDto.createdTo) {
-        queryBuilder.andWhere('orderRequest.createdAt <= :createdTo', {
-          createdTo: new Date(filterDto.createdTo),
-        });
-      }
+    // Aplicar filtros si están presentes
+    if (filterDto.tableId) {
+      queryBuilder.andWhere('orderRequest.tableId = :tableId', { tableId: filterDto.tableId });
     }
 
-    // Ordenar por fecha de creación (más reciente primero)
-    queryBuilder.orderBy('orderRequest.createdAt', 'DESC');
+    if (filterDto.clientId) {
+      queryBuilder.andWhere('orderRequest.clientId = :clientId', { clientId: filterDto.clientId });
+    }
+
+    if (filterDto.isCompleted !== undefined) {
+      queryBuilder.andWhere('orderRequest.isCompleted = :isCompleted', { isCompleted: filterDto.isCompleted });
+    }
+
+    if (filterDto.createdFrom) {
+      const fromDate = new Date(filterDto.createdFrom);
+      fromDate.setHours(0, 0, 0, 0);
+      queryBuilder.andWhere('orderRequest.createdAt >= :fromDate', { fromDate });
+    }
+
+    if (filterDto.createdTo) {
+      const toDate = new Date(filterDto.createdTo);
+      toDate.setHours(23, 59, 59, 999);
+      queryBuilder.andWhere('orderRequest.createdAt <= :toDate', { toDate });
+    }
 
     const [data, total] = await queryBuilder
       .skip(skip)
@@ -238,5 +235,58 @@ export class OrderRequestsService {
     this.websocketsService.notifyOrderRequestUpdate(orderRequest.tableId, tableOrderRequests);
 
     return updatedOrderRequest;
+  }
+
+  async acceptOrderRequest(id: string) {
+    // Obtener la solicitud de orden con sus items
+    const orderRequest = await this.findOne(id);
+    
+    if (orderRequest.isCompleted) {
+      throw new BadRequestException('La solicitud de orden ya está completada');
+    }
+
+    if (!orderRequest.items || orderRequest.items.length === 0) {
+      throw new BadRequestException('La solicitud de orden no tiene items');
+    }
+
+    try {
+      // Convertir OrderRequestItems a OrderItems (para CreateOrderDto)
+      const orderItems: CreateOrderItemDto[] = orderRequest.items.map(item => ({
+        productId: item.productId,
+        quantity: item.quantity,
+        unitPrice: Number(item.unitPrice)
+      }));
+
+      // Crear el DTO para la nueva orden
+      const createOrderDto: CreateOrderDto = {
+        tableId: orderRequest.tableId,
+        clientId: orderRequest.clientId,
+        items: orderItems,
+        status: OrderStatus.PROCESSING, // Establecer estado inicial como "processing"
+        isActive: true
+      };
+
+      // Crear la nueva orden usando el servicio de órdenes
+      const newOrder = await this.ordersService.create(createOrderDto);
+
+      // Marcar la solicitud de orden como completada
+      orderRequest.isCompleted = true;
+      const updatedOrderRequest = await this.orderRequestRepository.save(orderRequest);
+
+      // Actualizar el listado completo de órdenes para la mesa a través de WebSockets
+      const tableOrderRequests = await this.orderRequestRepository.find({
+        where: { tableId: orderRequest.tableId, isCompleted: false },
+        relations: ['items', 'items.product'],
+      });
+      this.websocketsService.notifyOrderRequestUpdate(orderRequest.tableId, tableOrderRequests);
+
+      // Devolver tanto la solicitud actualizada como la nueva orden
+      return {
+        orderRequest: updatedOrderRequest,
+        order: newOrder
+      };
+    } catch (error) {
+      throw new BadRequestException(`Error al aceptar la solicitud de orden: ${error.message}`);
+    }
   }
 } 

@@ -12,6 +12,7 @@ import { OrderRequestsModule } from './modules/order-requests/order-requests.mod
 import { GeneralConfigsModule } from './modules/general-configs/general-configs.module';
 import { WebsocketsModule } from './modules/websockets/websockets.module';
 import { SongRequestsModule } from './modules/songs-requests/song-requests.module';
+import { ReportsModule } from './modules/reports/reports.module';
 
 @Module({
   imports: [
@@ -29,6 +30,7 @@ import { SongRequestsModule } from './modules/songs-requests/song-requests.modul
     GeneralConfigsModule,
     WebsocketsModule,
     SongRequestsModule,
+    ReportsModule,
   ],
   controllers: [],
   providers: [],

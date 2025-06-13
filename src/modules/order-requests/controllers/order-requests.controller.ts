@@ -143,6 +143,34 @@ export class OrderRequestsController {
     return this.orderRequestsService.completeOrderRequest(id);
   }
 
+  @ApiOperation({ summary: 'Aceptar una solicitud de orden y convertirla en una orden' })
+  @ApiParam({ name: 'id', description: 'ID de la solicitud de orden a aceptar' })
+  @ApiOkResponse({ 
+    description: 'Solicitud de orden aceptada y convertida en orden',
+    schema: {
+      properties: {
+        orderRequest: { $ref: '#/components/schemas/OrderRequest' },
+        order: {
+          type: 'object',
+          properties: {
+            id: { type: 'string' },
+            tableId: { type: 'string' },
+            clientId: { type: 'string', nullable: true },
+            status: { type: 'string', enum: ['pending', 'completed', 'cancelled', 'processing'] },
+            total: { type: 'number' },
+            isActive: { type: 'boolean' },
+            createdAt: { type: 'string', format: 'date-time' },
+            updatedAt: { type: 'string', format: 'date-time' }
+          }
+        }
+      }
+    }
+  })
+  @Patch(':id/accept')
+  async acceptOrderRequest(@Param('id') id: string) {
+    return this.orderRequestsService.acceptOrderRequest(id);
+  }
+
   @ApiOperation({ summary: 'Eliminar una solicitud de orden' })
   @ApiParam({ name: 'id', description: 'ID de la solicitud de orden a eliminar' })
   @ApiOkResponse({ description: 'Solicitud de orden eliminada exitosamente' })

@@ -1,137 +1,92 @@
 # Sasseri Bares
 
-## Description General
+> 📝 **Nota**: Este archivo README ha sido reorganizado para facilitar el acceso a la información. Se ha estructurado con un índice y secciones claras para que puedas encontrar rápidamente el contexto o referencia sobre cualquier parte del proyecto sin necesidad de recorrer todos los directorios y archivos.
 
-Backend diseñado para la administración de bares y restaurantes, pensado en correr en entornos locales, es decir en el equipo del negocio. El sistema permite tener un sistema de adminstracion y vistas de clientes quienes puede solicitar productos y canciones.
+## Índice
 
-El sistema esta  diseñado para crear carpetas por modulo del sistema y cada carpeta tiene los archivos requeridos por el modulo (controladores, servicios, DTOs, entidades, etc...). 
+1. [Descripción General](#descripción-general)
+2. [Tecnologías](#tecnologías)
+3. [Estructura del Proyecto](#estructura-del-proyecto)
+4. [Módulos del Sistema](#módulos-del-sistema)
+   - [Módulo de Autenticación (auth)](#módulo-de-autenticación-auth)
+   - [Módulo de Usuarios (users)](#módulo-de-usuarios-users)
+   - [Módulo de WebSockets (websockets)](#módulo-de-websockets-websockets)
+   - [Otros módulos](#otros-módulos)
+5. [Guía para Crear Nuevos Módulos](#guía-para-crear-nuevos-módulos)
+   - [Estructura de Carpetas](#estructura-de-carpetas)
+   - [Patrón para Entidades](#patrón-para-entidades)
+   - [Patrón para DTOs](#patrón-para-dtos)
+   - [Patrón para Servicios](#patrón-para-servicios)
+   - [Patrón para Controladores](#patrón-para-controladores)
+   - [Implementación de Paginación y Filtros](#implementación-de-paginación-y-filtros)
+6. [Documentación Swagger](#documentación-swagger)
+   - [Configuración Base](#configuración-base)
+   - [Documentación de Entidades](#documentación-de-entidades)
+   - [Documentación de DTOs](#documentación-de-dtos)
+   - [Documentación de Controladores](#documentación-de-controladores)
+   - [Registro en main.ts](#registro-en-maints)
+   - [Mejores Prácticas](#mejores-prácticas-para-swagger)
+7. [Variables de Entorno](#variables-de-entorno)
+8. [Configuración de CORS](#configuración-de-cors)
+9. [Instalación y Ejecución](#instalación-y-ejecución)
+10. [Pruebas](#pruebas)
+11. [Despliegue](#despliegue)
+
+## Descripción General
+
+Backend diseñado para la administración de bares y restaurantes, pensado en correr en entornos locales, es decir en el equipo del negocio. El sistema permite tener un sistema de administración y vistas de clientes quienes pueden solicitar productos y canciones.
+
+El sistema está diseñado para crear carpetas por módulo del sistema y cada carpeta tiene los archivos requeridos por el módulo (controladores, servicios, DTOs, entidades, etc.).
 
 El sistema maneja dos roles, el primero es el administrador del sistema y el otro es el cliente. El sistema maneja las sesiones de ambos roles.
 
-## Tecnologias
+## Tecnologías
 
-  - Nestjs
-  - Typeorm
-  - Websockets
-  - Posgresql
-  - @nestjs/config y dotenv (para variables de entorno)
+- Nestjs
+- Typeorm
+- Websockets
+- PostgreSQL
+- @nestjs/config y dotenv (para variables de entorno)
 
-## Módulos del sistema 
+## Estructura del Proyecto
 
-  - auth            # Autenticacion y autorización usando JWT
-  - users           # Usuarios administradores del sistema
-  - general-configs # Configuraciones del bar como el nombre, número de facturación inicial, número de identificación, propietario, telefono, direccion, email, redes sociales.
-  - customers       # Módulo para que el adminstrador gestione los cilientes del bar (CRUD)
-  - tables          # Mesas del bar
-  - products        # Productos ofrecidos por el bar con el conteo de existencias.
-  - orders          # Ordenes, facturas o cuentas por cliente ligadas a una mesa, incluye el manejo de los items o productos de las ordenes.
-  - orders-requests # Solicitud de pedidos de parte de los clientes. El admin puede modificar el order-request y confirmalo con lo cual el order-request se carga a orders
-  - song-requests   # modulo para gestionar la lista de canciones solicitadas por las mesas, los clientes pueden solicitar canciones, esto actualiza la lista que canciones solicitadas por mesa. El administrador puede marcar como escuchada la cancion, eliminarlas del listado, limpiar todo el listado y agregar nuevas canciones. El orden de las canciones es por el orden de registro pero de a una cancion mesa activa o rondas de una cancion por mesa activa ordenadas segun el orden de registro.
-  - websockets      # Este módulo se encarga de la funcionalidad para actualizar los datos de solicitudes de ordenes de productos, el cambio del estado de la mesa (ocupada/disponible) y el listado de canciones solicitadas.
-
-### Módulo de WebSockets (websockets)
-
-El módulo de WebSockets proporciona una capa de comunicación en tiempo real entre el servidor y los clientes, permitiendo actualizaciones instantáneas para varias funcionalidades del sistema.
-
-**Estructura del Módulo:**
-- `gateways/` - Contiene los gateways de WebSocket que manejan conexiones y eventos
-- `services/` - Servicios que proporcionan una API simplificada para los demás módulos
-- `dto/` - Objetos de transferencia de datos para los eventos de WebSocket
-
-**Funcionalidades Principales:**
-1. **Actualización de Solicitudes de Canciones:**
-   - Notificación en tiempo real cuando se solicitan nuevas canciones
-   - Actualización de la lista de canciones solicitadas por mesa
-   - Evento: `songRequestUpdate`
-
-2. **Actualización del Estado de Mesas:**
-   - Notificación cuando una mesa cambia de estado (disponible/ocupada)
-   - Actualización de información detallada sobre el estado de la mesa
-   - Evento: `tableStatusUpdate`
-
-3. **Actualización de Solicitudes de Órdenes:**
-   - Notificación en tiempo real cuando se solicitan nuevos productos
-   - Actualización de la lista de solicitudes de órdenes por mesa
-   - Evento: `orderRequestUpdate`
-
-4. **Notificación de Nuevos Pedidos:**
-   - Notificación inmediata cuando un cliente crea un nuevo pedido
-   - Incluye información detallada como ID de la mesa, cliente, número de productos y total
-   - Permite a los administradores recibir alertas instantáneas sobre nuevas solicitudes
-   - Evento: `newOrderNotification`
-
-**Implementación:**
-- Se utiliza Socket.IO para la comunicación WebSocket
-- Los clientes se conectan al gateway principal (`AppGateway`)
-- Los demás módulos pueden usar `WebsocketsService` para emitir eventos
-
-**Uso desde Otros Módulos:**
-```typescript
-// Ejemplo de cómo el módulo de solicitudes de órdenes usa WebSockets
-@Injectable()
-export class OrderRequestsService {
-  constructor(
-    private readonly websocketsService: WebsocketsService
-    // ... otras dependencias
-  ) {}
-
-  async create(createOrderRequestDto: CreateOrderRequestDto): Promise<OrderRequest> {
-    // Lógica para crear la solicitud...
-    
-    // Notificar sobre el nuevo pedido
-    this.websocketsService.notifyNewOrder(
-      orderRequest.id,
-      orderRequest.tableId,
-      orderRequest.clientId,
-      {
-        total: Number(orderRequest.total),
-        itemsCount: orderRequest.items.length,
-        createdAt: orderRequest.createdAt,
-      }
-    );
-    
-    // Actualizar también el listado completo de órdenes para la mesa
-    this.websocketsService.notifyOrderRequestUpdate(orderRequest.tableId, tableOrderRequests);
-    
-    return orderRequest;
-  }
-}
+```
+bares_app
+  src/
+    common/              # Utilidades comunes
+      constans/          # Constantes
+      decorators/        # Decoradores
+      entities/          # Entidades base
+      filters/           # Filtros
+      guards/            # Guardias
+      interceptors/      # Interceptores
+      pipes/             # Pipes
+    config/              # Configuración de la aplicación
+    migrations/          # Migraciones de base de datos
+    modules/             # Módulos del sistema
+      auth/              # Autenticación y autorización
+      users/             # Usuarios administradores
+      general-configs/   # Configuraciones del bar
+      customers/         # Gestión de clientes
+      tables/            # Mesas del bar
+      products/          # Productos
+      orders/            # Órdenes/facturas
+      order-requests/    # Solicitudes de pedidos
+      songs-requests/    # Solicitudes de canciones
+      reports/           # Reportes y estadísticas
+      websockets/        # Comunicación en tiempo real
+  test/                  # Pruebas
+  .env                   # Variables de entorno
+  .env.development       # Variables para desarrollo
+  env.example            # Ejemplo de configuración
+  nest-cli.json          # Configuración de NestJS
+  package.json           # Dependencias
+  tsconfig.json          # Configuración de TypeScript
 ```
 
-**Conexión desde el Cliente:**
-```javascript
-// Ejemplo de conexión desde un cliente (frontend)
-import { io } from 'socket.io-client';
+Para una estructura completa y detallada, consulte [Estructura Completa del Proyecto](./projectFilesStructure.md).
 
-const socket = io('http://localhost:3000');
-
-// Escuchar eventos de notificación de nuevos pedidos
-socket.on('newOrderNotification', (data) => {
-  console.log(`¡Nuevo pedido recibido para la mesa ${data.tableId}!`);
-  console.log(`Total: ${data.orderInfo.total}, Productos: ${data.orderInfo.itemsCount}`);
-  // Mostrar notificación al administrador...
-});
-
-// Escuchar eventos de actualización de solicitudes de órdenes
-socket.on('orderRequestUpdate', (data) => {
-  console.log(`Actualización de pedidos para mesa ${data.tableId}`);
-  console.log(data.orderRequests);
-  // Actualizar la interfaz de usuario...
-});
-
-// ... otros eventos
-```
-
-**Consideraciones de Seguridad:**
-- En producción, configurar CORS para permitir solo orígenes específicos
-- Implementar autenticación para las conexiones WebSocket si es necesario
-- Validar los datos recibidos antes de procesarlos
-
-**Beneficios:**
-- Actualización instantánea de la interfaz de usuario sin necesidad de recargar
-- Notificaciones en tiempo real de nuevos pedidos para acelerar la atención al cliente
-- Reducción de consultas al servidor mediante comunicación en tiempo real
-- Mejora de la experiencia del usuario con notificaciones inmediatas
+## Módulos del Sistema
 
 ### Módulo de Autenticación (auth)
 
@@ -151,6 +106,10 @@ El módulo de autenticación proporciona funcionalidades para iniciar sesión y 
 - `local.strategy.ts` - Estrategia para validación de credenciales locales
 - `jwt-auth.guard.ts` - Guardián para proteger rutas con JWT
 - `local-auth.guard.ts` - Guardián para autenticación local
+
+Para más detalles, consulte la [Documentación del Módulo de Autenticación](./src/modules/auth/authInstructs.md).
+
+### Módulo de Usuarios (users)
 
 **Rutas:**
 - `GET /users` - Obtener todos los usuarios
@@ -184,6 +143,59 @@ El módulo de autenticación proporciona funcionalidades para iniciar sesión y 
 - `update-user.dto.ts` - DTO para actualización de usuarios
 - `filter-user.dto.ts` - DTO para filtrado de usuarios
 - `pagination.dto.ts` - DTO para paginación
+
+Para más detalles, consulte la [Documentación del Módulo de Usuarios](./src/modules/users/usersInstructs.md).
+
+### Módulo de WebSockets (websockets)
+
+El módulo de WebSockets proporciona una capa de comunicación en tiempo real entre el servidor y los clientes, permitiendo actualizaciones instantáneas para varias funcionalidades del sistema.
+
+**Estructura del Módulo:**
+- `gateways/` - Contiene los gateways de WebSocket que manejan conexiones y eventos
+- `services/` - Servicios que proporcionan una API simplificada para los demás módulos
+- `dto/` - Objetos de transferencia de datos para los eventos de WebSocket
+
+**Funcionalidades Principales:**
+1. **Actualización de Solicitudes de Canciones:**
+   - Notificación en tiempo real cuando se solicitan nuevas canciones
+   - Actualización de la lista de canciones solicitadas por mesa
+   - Evento: `songRequestUpdate`
+
+2. **Actualización del Estado de Mesas:**
+   - Notificación cuando una mesa cambia de estado (disponible/ocupada)
+   - Actualización de información detallada sobre el estado de la mesa
+   - Evento: `tableStatusUpdate`
+
+3. **Actualización de Solicitudes de Órdenes:**
+   - Notificación en tiempo real cuando se solicitan nuevos productos
+   - Actualización de la lista de solicitudes de órdenes por mesa
+   - Evento: `orderRequestUpdate`
+
+4. **Notificación de Nuevos Pedidos:**
+   - Notificación inmediata cuando un cliente crea un nuevo pedido
+   - Incluye información detallada como ID de la mesa, cliente, número de productos y total
+   - Permite a los administradores recibir alertas instantáneas sobre nuevas solicitudes
+   - Evento: `newOrderNotification`
+
+Para más detalles y ejemplos de implementación, consulte la [Documentación del Módulo de WebSockets](./src/modules/websockets/websocketsInstructs.md).
+
+### Otros módulos
+
+- **general-configs**: Configuraciones del bar como el nombre, número de facturación inicial, número de identificación, propietario, teléfono, dirección, email, redes sociales. [Ver documentación](./src/modules/general-configs/generalConfigInstructs.md).
+  
+- **customers**: Módulo para que el administrador gestione los clientes del bar (CRUD). [Ver documentación](./src/modules/customers/customersInstructs.md).
+  
+- **tables**: Mesas del bar. [Ver documentación](./src/modules/tables/tablesInstructs.md).
+  
+- **products**: Productos ofrecidos por el bar con el conteo de existencias. [Ver documentación](./src/modules/products/productsInstructs.md).
+  
+- **orders**: Órdenes, facturas o cuentas por cliente ligadas a una mesa, incluye el manejo de los ítems o productos de las órdenes.
+  
+- **order-requests**: Solicitud de pedidos de parte de los clientes. El admin puede modificar el order-request y confirmarlo con lo cual el order-request se carga a orders. [Ver documentación](./src/modules/order-requests/order-requestsInstructs.md).
+  
+- **songs-requests**: Módulo para gestionar la lista de canciones solicitadas por las mesas. Los clientes pueden solicitar canciones, esto actualiza la lista de canciones solicitadas por mesa. El administrador puede marcar como escuchada la canción, eliminarlas del listado, limpiar todo el listado y agregar nuevas canciones.
+  
+- **reports**: Módulo para generar reportes y estadísticas del negocio, como ventas totales, productos más vendidos, etc. [Ver documentación](./src/modules/reports/reportsInstructs.md).
 
 ## Guía para Crear Nuevos Módulos
 
@@ -330,42 +342,13 @@ async findPaginated(paginationDto, filterDto) {
 }
 ```
 
-### Documentación Swagger
+Para más detalles sobre la creación de módulos, consulte la [Guía Completa para Nuevos Módulos](./docs/CreacionModulos.md).
 
-Para documentar correctamente los endpoints usando Swagger:
-
-1. Usa `@ApiProperty` y `@ApiPropertyOptional` en las entidades y DTOs
-2. Define esquemas para enums y tipos específicos
-3. Especifica correctamente los tipos de retorno con `@ApiResponse`
-4. Para parámetros de consulta, usa `@ApiQuery` con el nombre exacto del parámetro
-
-```typescript
-@ApiQuery({ 
-  name: 'role', 
-  required: false, 
-  enum: ['valor1', 'valor2'], 
-  description: 'Descripción',
-  schema: { 
-    type: 'string',
-    enum: ['valor1', 'valor2']
-  }
-})
-```
-
-### Consideraciones para Nuevos Módulos
-
-1. **Registro en app.module.ts**: Asegúrate de registrar el nuevo módulo en el módulo principal.
-2. **Relaciones**: Define correctamente las relaciones entre entidades usando TypeORM.
-3. **Validación**: Implementa validación completa en los DTOs.
-4. **Seguridad**: Aplica los guardias de autenticación según sea necesario.
-5. **Errores**: Maneja adecuadamente los errores específicos del negocio.
-6. **Documentación**: Documenta todos los endpoints y modelos con Swagger.
-
-### Guía para Implementar Swagger en Módulos
+## Documentación Swagger
 
 Esta sección proporciona instrucciones detalladas para implementar Swagger correctamente en cualquier módulo del sistema.
 
-#### 1. Instalación y Configuración Base (Ya realizada en el proyecto)
+### Configuración Base
 
 El proyecto ya tiene configurado Swagger en `main.ts`. Si necesitas configurarlo en un nuevo proyecto:
 
@@ -405,295 +388,25 @@ const document = SwaggerModule.createDocument(app, swaggerConfig, {
 SwaggerModule.setup('api/docs', app, document); // Ruta donde estará disponible Swagger
 ```
 
-#### 2. Documentación de Entidades
+### Documentación de Entidades
 
-Cada propiedad de la entidad debe estar documentada con `@ApiProperty`:
+Cada propiedad de la entidad debe estar documentada con `@ApiProperty`. 
 
-```typescript
-import { BaseEntity } from '../../../common/entities/base.entity';
-import { Column, Entity } from 'typeorm';
-import { ApiProperty } from '@nestjs/swagger';
+Para ejemplos detallados, consulte la [Guía de Documentación Swagger](./docs/SwaggerGuide.md).
 
-@Entity('nombre_tabla')
-export class MiEntidad extends BaseEntity {
-  @ApiProperty({ 
-    description: 'Descripción del campo', 
-    example: 'Valor de ejemplo',
-    required: true // Por defecto es true
-  })
-  @Column({ unique: true })
-  campoUnico: string;
+### Documentación de DTOs
 
-  @ApiProperty({ 
-    description: 'Campo numérico', 
-    example: 100,
-    type: Number
-  })
-  @Column()
-  campoNumerico: number;
+Para los DTOs, sigue los patrones establecidos para Create DTO, Update DTO y Filter DTO.
 
-  @ApiProperty({ 
-    description: 'Campo opcional', 
-    example: 'Valor opcional', 
-    required: false,
-    nullable: true
-  })
-  @Column({ nullable: true })
-  campoOpcional?: string;
+Para ejemplos detallados, consulte la [Guía de Documentación Swagger](./docs/SwaggerGuide.md).
 
-  @ApiProperty({ 
-    description: 'Campo con valores fijos', 
-    enum: ['valor1', 'valor2', 'valor3'],
-    enumName: 'NombreEnum', // Nombre para mostrar en Swagger
-    example: 'valor1'
-  })
-  @Column({
-    type: 'enum',
-    enum: ['valor1', 'valor2', 'valor3'],
-    default: 'valor1',
-  })
-  campoEnum: string;
+### Documentación de Controladores
 
-  @ApiProperty({ 
-    description: 'Campo booleano', 
-    example: true, 
-    default: false 
-  })
-  @Column({ default: false })
-  campoBooleano: boolean;
-}
-```
+En los controladores, usa los decoradores apropiados de Swagger para documentar endpoints, parámetros y respuestas.
 
-#### 3. Documentación de DTOs
+Para ejemplos detallados, consulte la [Guía de Documentación Swagger](./docs/SwaggerGuide.md).
 
-Para los DTOs, sigue estos patrones:
-
-**Create DTO** - Para creación de recursos:
-
-```typescript
-import { IsEnum, IsNotEmpty, IsOptional, IsString, MinLength } from 'class-validator';
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-
-export class CreateMiEntidadDto {
-  @ApiProperty({ 
-    description: 'Campo requerido', 
-    example: 'Valor de ejemplo' 
-  })
-  @IsString()
-  @IsNotEmpty()
-  campoRequerido: string;
-
-  @ApiProperty({ 
-    description: 'Campo con longitud mínima', 
-    example: 'password123',
-    minLength: 6 
-  })
-  @IsString()
-  @IsNotEmpty()
-  @MinLength(6)
-  campoConMinLength: string;
-
-  @ApiPropertyOptional({ 
-    description: 'Campo opcional', 
-    example: 'Valor opcional' 
-  })
-  @IsString()
-  @IsOptional()
-  campoOpcional?: string;
-
-  @ApiProperty({ 
-    description: 'Campo enum', 
-    enum: ['valor1', 'valor2'],
-    enumName: 'MiEnum',
-    example: 'valor1' 
-  })
-  @IsEnum(['valor1', 'valor2'])
-  @IsNotEmpty()
-  campoEnum: string;
-}
-```
-
-**Update DTO** - Para actualización (todos los campos opcionales):
-
-```typescript
-import { PartialType } from '@nestjs/swagger';
-import { CreateMiEntidadDto } from './create-mi-entidad.dto';
-
-// PartialType hace que todos los campos sean opcionales
-export class UpdateMiEntidadDto extends PartialType(CreateMiEntidadDto) {}
-```
-
-**Filter DTO**: Para filtros en consultas:
-
-```typescript
-import { IsOptional, IsString, IsBoolean, IsNumber } from 'class-validator';
-import { ApiPropertyOptional } from '@nestjs/swagger';
-import { Type } from 'class-transformer';
-
-export class FilterMiEntidadDto {
-  @ApiPropertyOptional({ 
-    description: 'Filtrar por nombre', 
-    example: 'texto' 
-  })
-  @IsOptional()
-  @IsString()
-  nombre?: string;
-
-  @ApiPropertyOptional({ 
-    description: 'Filtrar por estado', 
-    example: true 
-  })
-  @IsOptional()
-  @IsBoolean()
-  @Type(() => Boolean)
-  activo?: boolean;
-
-  @ApiPropertyOptional({ 
-    description: 'Filtrar por cantidad', 
-    example: 10 
-  })
-  @IsOptional()
-  @IsNumber()
-  @Type(() => Number)
-  cantidad?: number;
-}
-```
-
-#### 4. Documentación de Controladores
-
-En los controladores, usa estos decoradores:
-
-```typescript
-import { 
-  ApiBearerAuth, 
-  ApiCreatedResponse, 
-  ApiOkResponse, 
-  ApiOperation, 
-  ApiParam, 
-  ApiQuery, 
-  ApiTags 
-} from '@nestjs/swagger';
-
-@ApiTags('Nombre del Módulo') // Agrupa endpoints en Swagger
-@ApiBearerAuth('JWT-auth') // Agrega autenticación JWT a todos los endpoints
-@Controller('ruta-base')
-@UseGuards(JwtAuthGuard)
-export class MiController {
-  constructor(private readonly miServicio: MiServicio) {}
-
-  @ApiOperation({ summary: 'Crear nuevo recurso' }) // Descripción de la operación
-  @ApiCreatedResponse({ 
-    description: 'Recurso creado exitosamente',
-    type: MiEntidad // Tipo de respuesta para Swagger
-  })
-  @Post()
-  async create(@Body() createDto: CreateMiEntidadDto): Promise<MiEntidad> {
-    return this.miServicio.create(createDto);
-  }
-
-  @ApiOperation({ summary: 'Obtener todos los recursos' })
-  @ApiOkResponse({ 
-    description: 'Lista de recursos obtenida',
-    type: [MiEntidad] // Array del tipo
-  })
-  @Get()
-  async findAll(): Promise<MiEntidad[]> {
-    return this.miServicio.findAll();
-  }
-
-  @ApiOperation({ summary: 'Obtener recursos paginados con filtros' })
-  @ApiQuery({ name: 'page', required: false, type: Number, description: 'Número de página' })
-  @ApiQuery({ name: 'limit', required: false, type: Number, description: 'Límite por página' })
-  @ApiQuery({ name: 'nombre', required: false, type: String, description: 'Filtrar por nombre' })
-  @ApiQuery({ 
-    name: 'tipo', 
-    required: false, 
-    enum: ['tipo1', 'tipo2'], 
-    description: 'Filtrar por tipo',
-    schema: { 
-      type: 'string',
-      enum: ['tipo1', 'tipo2']
-    }
-  })
-  @ApiQuery({ 
-    name: 'activo', 
-    required: false, 
-    type: Boolean, 
-    description: 'Filtrar por estado',
-    schema: {
-      type: 'boolean'
-    }
-  })
-  @ApiOkResponse({ 
-    description: 'Lista paginada de recursos',
-    schema: {
-      properties: {
-        data: {
-          type: 'array',
-          items: { $ref: '#/components/schemas/MiEntidad' }
-        },
-        total: { type: 'number' },
-        page: { type: 'number' },
-        limit: { type: 'number' }
-      }
-    }
-  })
-  @Get('paginated')
-  async findPaginated(
-    @Query('page') page?: string,
-    @Query('limit') limit?: string,
-    @Query('nombre') nombre?: string,
-    @Query('tipo') tipo?: string,
-    @Query('activo') activo?: string,
-  ): Promise<{ data: MiEntidad[]; total: number; page: number; limit: number }> {
-    // Transformar parámetros
-    const paginationDto = { 
-      page: page ? Number(page) : 1, 
-      limit: limit ? Number(limit) : 10 
-    };
-    
-    const filterDto = { 
-      nombre, 
-      tipo,
-      activo: activo === 'true' ? true : activo === 'false' ? false : undefined
-    };
-    
-    return this.miServicio.findPaginated(paginationDto, filterDto);
-  }
-
-  @ApiOperation({ summary: 'Obtener un recurso por ID' })
-  @ApiParam({ name: 'id', description: 'ID del recurso' })
-  @ApiOkResponse({ 
-    description: 'Recurso encontrado',
-    type: MiEntidad 
-  })
-  @Get(':id')
-  async findOne(@Param('id') id: string): Promise<MiEntidad> {
-    return this.miServicio.findOne(id);
-  }
-
-  @ApiOperation({ summary: 'Actualizar un recurso' })
-  @ApiParam({ name: 'id', description: 'ID del recurso a actualizar' })
-  @ApiOkResponse({ 
-    description: 'Recurso actualizado exitosamente',
-    type: MiEntidad 
-  })
-  @Patch(':id')
-  async update(@Param('id') id: string, @Body() updateDto: UpdateMiEntidadDto): Promise<MiEntidad> {
-    return this.miServicio.update(id, updateDto);
-  }
-
-  @ApiOperation({ summary: 'Eliminar un recurso' })
-  @ApiParam({ name: 'id', description: 'ID del recurso a eliminar' })
-  @ApiOkResponse({ description: 'Recurso eliminado exitosamente' })
-  @Delete(':id')
-  async remove(@Param('id') id: string): Promise<void> {
-    return this.miServicio.remove(id);
-  }
-}
-```
-
-#### 5. Registro en main.ts
+### Registro en main.ts
 
 Para que el módulo aparezca en la documentación de Swagger, debes incluirlo en la configuración:
 
@@ -707,7 +420,7 @@ const document = SwaggerModule.createDocument(app, swaggerConfig, {
 });
 ```
 
-#### 6. Mejores Prácticas para Swagger
+### Mejores Prácticas para Swagger
 
 1. **Ejemplos realistas**: Proporciona ejemplos realistas en los decoradores `@ApiProperty`.
 2. **Descripciones claras**: Escribe descripciones claras y concisas para cada propiedad y endpoint.
@@ -715,11 +428,9 @@ const document = SwaggerModule.createDocument(app, swaggerConfig, {
 4. **Enumeraciones**: Documenta adecuadamente las enumeraciones usando `enum` y `enumName`.
 5. **Respuestas de error**: Documenta las posibles respuestas de error usando `@ApiResponse`.
 6. **Parámetros de ruta y consulta**: Usa `@ApiParam` y `@ApiQuery` para documentar todos los parámetros.
-7. **Recordar agrear los módulos en la configuración de Swagger**
+7. **Recordar agregar los módulos en la configuración de Swagger**
 
-Siguiendo estas instrucciones, podrás implementar Swagger de manera rápida y completa en cualquier nuevo módulo que desarrolles en el sistema.
-
-## Variables de entorno
+## Variables de Entorno
 
 El proyecto utiliza variables de entorno para configuración. Sigue estos pasos:
 
@@ -739,6 +450,8 @@ Las variables configuradas incluyen:
 
 **Nota:** Los archivos `.env` no se envían al repositorio por seguridad.
 
+Para más detalles, consulte la [Guía de Variables de Entorno](./docs/VariablesEntorno.md).
+
 ## Configuración de CORS
 
 El proyecto está configurado para manejar Cross-Origin Resource Sharing (CORS), lo que permite que el frontend pueda comunicarse con el backend aunque estén en diferentes dominios o puertos.
@@ -756,74 +469,46 @@ El proyecto está configurado para permitir conexiones desde diversos orígenes 
 - Direcciones: tanto `localhost` como `127.0.0.1`
 - Protocolos: tanto `http` como `https`
 
-Esto facilita el desarrollo con diferentes frameworks y herramientas frontend sin problemas de CORS.
+Para más detalles, consulte la [Guía de Configuración CORS](./docs/CORSConfig.md).
 
-### Manejo de Certificados SSL
-
-Para desarrollo local, el proyecto está configurado para no rechazar conexiones que no tengan certificados SSL válidos, lo que permite trabajar con `https` en entornos de desarrollo sin necesidad de configurar certificados.
-
-### WebSockets y CORS
-
-Los WebSockets también tienen configurado CORS de manera amplia para permitir conexiones desde el frontend. La configuración incluye:
-
-- Orígenes: se permiten todos los orígenes en desarrollo
-- Cabeceras: se permiten cabeceras comunes como `Content-Type`, `Authorization`, `Accept`, etc.
-- Credenciales: se permiten credenciales en las solicitudes
-- Cache: las respuestas de preflight se cachean durante 1 hora para mejorar el rendimiento
-
-### Configuración para Producción
-
-En entornos de producción, es recomendable:
-
-1. Establecer `CORS_ALLOW_ALL_ORIGINS=false`
-2. Configurar los orígenes específicos que necesiten acceso en el archivo `src/config/cors.config.ts`
-3. Configuración recomendada para entornos de producción:
-   ```
-   CORS_ENABLED=true
-   CORS_ALLOW_ALL_ORIGINS=false
-   ```
-
-## Project setup
+## Instalación y Ejecución
 
 ```bash
+# Instalación de dependencias
 $ npm install
-```
 
-## Compile and run the project
-
-```bash
-# development
+# Desarrollo
 $ npm run start
 
-# watch mode
+# Modo watch
 $ npm run start:dev
 
-# production mode
+# Producción
 $ npm run start:prod
 ```
 
-## Run tests
+## Pruebas
 
 ```bash
-# unit tests
+# Pruebas unitarias
 $ npm run test
 
-# e2e tests
+# Pruebas e2e
 $ npm run test:e2e
 
-# test coverage
+# Cobertura de pruebas
 $ npm run test:cov
 ```
 
-## Deployment
+## Despliegue
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
+Cuando estés listo para desplegar tu aplicación NestJS en producción, hay algunos pasos clave que puedes seguir para asegurar que funcione lo más eficientemente posible. Consulta la [documentación de despliegue](https://docs.nestjs.com/deployment) para más información.
 
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+Si buscas una plataforma basada en la nube para desplegar tu aplicación NestJS, consulta [Mau](https://mau.nestjs.com), nuestra plataforma oficial para desplegar aplicaciones NestJS en AWS. Mau hace que el despliegue sea sencillo y rápido, requiriendo solo unos pocos pasos simples:
 
 ```bash
 $ npm install -g @nestjs/mau
 $ mau deploy
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+Con Mau, puedes desplegar tu aplicación con solo unos clics, permitiéndote concentrarte en construir características en lugar de administrar infraestructura.
